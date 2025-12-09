@@ -15,6 +15,7 @@ export interface User {
   email: string;
   role: UserRole;
   name: string;
+  signature?: string; // Base64 signature image
 }
 
 export interface Agent extends User {
@@ -33,7 +34,7 @@ export interface DocumentData {
   signerGmail?: string;
   pdfUrl?: string; // Base64 Data URL
   signedPdfUrl?: string; // Base64 Data URL
-  
+
   // Agent / Agency Info
   agentId: string;
   agentName: string;

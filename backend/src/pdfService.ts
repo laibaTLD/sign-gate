@@ -1,39 +1,190 @@
-import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import * as fs from 'fs';
+import * as path from 'path';
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
-}
-
+/**
+ * Convert base64 to bytes
+ */
 function base64ToBytes(base64: string): Uint8Array {
-  const binaryString = window.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
+  const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+  const binaryString = Buffer.from(cleanBase64, 'base64').toString('binary');
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
 }
 
+/**
+ * Convert bytes to base64
+ */
+function bytesToBase64(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString('base64');
+}
+
+/**
+ * Embed a signature image into an existing PDF
+ */
+export const embedSignatureInPdf = async (
+  base64Pdf: string,
+  base64Signature: string,
+  signerInfo?: {
+    email?: string;
+    signedAt?: number;
+    clientCompanyName?: string;
+    businessOwnerName?: string;
+  },
+  lastY?: number // Y position where content ended on the last page
+): Promise<string> => {
+  try {
+    const pdfBytes = base64ToBytes(base64Pdf);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const certFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Calculate required height for certificate
+    // Title (30) + Cust Info (~65) + Date/Signer (~40) + Header (20) + Box (80) + Footer (30)
+    // Approximate strict height needed: 280
+    const requiredHeight = 350; // generous buffer
+
+    let certPage;
+    let currentY;
+
+    // Check if we can fit on the last page
+    let addedNewPage = true;
+    if (lastY !== undefined && lastY > requiredHeight) {
+      // Use existing last page
+      const pages = pdfDoc.getPages();
+      certPage = pages[pages.length - 1];
+      currentY = lastY - 50; // Start 50 units below last content
+      addedNewPage = false;
+    } else {
+      // Add new page
+      certPage = pdfDoc.addPage([595, 520]);
+      currentY = 470;
+    }
+
+    if (addedNewPage) {
+      certPage.drawText('DIGITAL SIGNATURE CERTIFICATE', {
+        x: 50,
+        y: currentY,
+        size: 16,
+        font: boldFont
+      });
+      currentY -= 40;
+    } else {
+      // If on same page, maybe a separator line or just the title
+      certPage.drawLine({
+        start: { x: 50, y: currentY + 20 },
+        end: { x: 545, y: currentY + 20 },
+        thickness: 1,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+
+      certPage.drawText('DIGITAL SIGNATURE CERTIFICATE', {
+        x: 50,
+        y: currentY,
+        size: 14,
+        font: boldFont,
+        color: rgb(0.3, 0.3, 0.3)
+      });
+      currentY -= 30;
+    }
+
+    if (signerInfo?.clientCompanyName || signerInfo?.businessOwnerName) {
+      certPage.drawText('Customer Information', { x: 50, y: currentY, size: 12, font: boldFont });
+      currentY -= 20;
+      certPage.drawText(`Customer Business Name: ${signerInfo.clientCompanyName || 'N/A'}`, { x: 50, y: currentY, size: 10, font: certFont });
+      currentY -= 15;
+      certPage.drawText(`Business owner (Managing Member): ${signerInfo.businessOwnerName || 'N/A'}`, { x: 50, y: currentY, size: 10, font: certFont });
+      currentY -= 30;
+    }
+
+    const signedDate = signerInfo?.signedAt
+      ? new Date(signerInfo.signedAt).toLocaleDateString()
+      : new Date().toLocaleDateString();
+    const signedTime = signerInfo?.signedAt
+      ? new Date(signerInfo.signedAt).toLocaleTimeString()
+      : new Date().toLocaleTimeString();
+
+    certPage.drawText(`Digitally Signed: ${signedDate} ${signedTime}`, {
+      x: 50,
+      y: currentY,
+      size: 12,
+      font: certFont
+    });
+    currentY -= 20;
+
+    if (signerInfo?.email) {
+      certPage.drawText(`Signed by: ${signerInfo.email}`, {
+        x: 50,
+        y: currentY,
+        size: 12,
+        font: certFont
+      });
+      currentY -= 30;
+    } else {
+      currentY -= 10;
+    }
+
+    certPage.drawText('Signature:', {
+      x: 50,
+      y: currentY,
+      size: 14,
+      font: boldFont
+    });
+
+    const sigBytes = base64ToBytes(base64Signature);
+    const signatureImage = await pdfDoc.embedPng(sigBytes);
+    const signatureDims = signatureImage.scale(0.4);
+
+    certPage.drawImage(signatureImage, {
+      x: 50,
+      y: currentY - 80,
+      width: Math.min(signatureDims.width, 200),
+      height: Math.min(signatureDims.height, 80),
+    });
+
+    // Adjust footer position
+    const footerY = addedNewPage ? 50 : (currentY - 100);
+
+    certPage.drawText('This document has been digitally signed and secured via SignFlow.', {
+      x: 50,
+      y: footerY,
+      size: 10,
+      color: rgb(0.5, 0.5, 0.5),
+      font: certFont
+    });
+
+    const savedBytes = await pdfDoc.save();
+    return bytesToBase64(savedBytes);
+  } catch (error) {
+    console.error('Error embedding signature:', error);
+    throw new Error('Failed to embed signature in PDF');
+  }
+};
+
+/**
+ * Generate a base PDF from document data
+ */
 export const generateBasePdf = async (docData: any): Promise<{ pdf: string, lastY: number }> => {
   try {
     const pdfDoc = await PDFDocument.create();
 
     // Load watermark image
-    let watermarkImage: any = null;
+    let watermarkImage = null;
     try {
-      const watermarkResponse = await fetch(`/watermark.png?v=${Date.now()}`);
-      const watermarkBytes = await watermarkResponse.arrayBuffer();
-      watermarkImage = await pdfDoc.embedPng(watermarkBytes);
+      const watermarkPath = path.join(__dirname, '../../frontend/public/watermark.png');
+      if (fs.existsSync(watermarkPath)) {
+        const watermarkBytes = fs.readFileSync(watermarkPath);
+        watermarkImage = await pdfDoc.embedPng(watermarkBytes);
+      }
     } catch (error) {
       console.warn('Could not load watermark:', error);
     }
 
-    const drawWatermark = (p: PDFPage) => {
+    // Helper to draw watermark
+    const drawWatermark = (p: any) => {
       if (watermarkImage) {
         const { width, height } = p.getSize();
         const watermarkDims = watermarkImage.scale(0.3);
@@ -60,7 +211,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
 
     // --- LAYOUT HELPERS ---
 
-    const computeLines = (text: string, font: PDFFont, size: number, maxWidth: number) => {
+    const computeLines = (text: string, font: any, size: number, maxWidth: number) => {
       if (!text) return [];
       const words = text.split(/\s+/);
       let lines: string[] = [];
@@ -122,11 +273,15 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
         yPosition = 842 - margin;
       }
 
+      // NO BACKGROUND OR BORDER color
+      // Just adjust yPosition based on height, but maybe less padding needed if no box?
+      // Keeping spacing for consistency
+
       // Draw Content
       let cy = yPosition - padding;
       if (title) {
         page.drawText(title, {
-          x: margin + padding,
+          x: margin + padding, // Keep indentation
           y: cy,
           size: 11,
           font: boldFont,
@@ -184,9 +339,10 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     drawTextLine(`Date: ${new Date().toLocaleDateString()}`, 10);
     yPosition -= 20;
 
-    const isUSBrandBooster = (docData.templateName && docData.templateName.includes('US Brand Booster')) ||
-      (docData.metadata?.templateName && docData.metadata.templateName.includes('US Brand Booster')) ||
-      docData.clientCompanyName; // Fallback
+    const isUSBrandBooster = docData.templateId === 'us-brand-booster' ||
+      (docData.templateName && docData.templateName.includes('US Brand Booster')) ||
+      docData.clientCompanyName ||
+      docData.businessOwnerName;
 
     // 1. PARTIES
     const partiesItems: any[] = [];
@@ -273,6 +429,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       if (docData.scopeOfWork) {
         drawBlock('SCOPE OF WORK', [{ text: docData.scopeOfWork }]);
       }
+      // Generic Signatures
       if (yPosition < 200) { page = pdfDoc.addPage([595, 842]); drawWatermark(page); yPosition = 800; }
       yPosition -= 20;
       drawTextLine('AGREEMENT SIGNATURES', 12, true);
@@ -299,10 +456,10 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
 
       if (docData.agentSignature) {
         try {
-          const sigBase64 = docData.agentSignature.includes('base64,') ? docData.agentSignature.split('base64,')[1] : docData.agentSignature;
+          // Normalize base64
+          const sigBase64 = docData.agentSignature.includes(',') ? docData.agentSignature.split(',')[1] : docData.agentSignature;
           const sigBytes = base64ToBytes(sigBase64);
           let sigImage;
-          // Try PNG first, then JPG
           try {
             sigImage = await pdfDoc.embedPng(sigBytes);
           } catch {
@@ -348,7 +505,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     const pdfBytes = await pdfDoc.save();
     return { pdf: bytesToBase64(pdfBytes), lastY: yPosition };
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('Failed to generate PDF');
+    console.error('Error generating base PDF:', error);
+    throw new Error('Failed to generate base PDF');
   }
 };

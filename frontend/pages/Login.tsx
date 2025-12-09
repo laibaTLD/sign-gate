@@ -42,7 +42,7 @@ export default function Login({ onLogin }: LoginProps) {
       };
       onLogin(mapped);
       if (mapped.role === UserRole.ADMIN) navigate('/admin');
-      else if (mapped.role === UserRole.AGENT) navigate('/agent');
+      else if (mapped.role === UserRole.AGENT) navigate('/support');
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -51,24 +51,24 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-brand-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-brand-600">
+        <div className="flex justify-center text-yellow-400">
            <ShieldCheck size={48} />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-brand-900">
           Sign in to your account
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          For Admins and Agents
+        <p className="mt-2 text-center text-sm text-brand-500">
+          For Admins and Support
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-brand-100">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-brand-700">
                 Email address
               </label>
               <div className="mt-1">
@@ -79,14 +79,14 @@ export default function Login({ onLogin }: LoginProps) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
+                  className="appearance-none block w-full px-3 py-2 border border-brand-200 rounded-md shadow-sm placeholder-brand-400 focus:outline-none focus:ring-yellow-400 focus:border-yellow-400 sm:text-sm"
                   placeholder="admin@signflow.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-brand-700">
                 Password
               </label>
               <div className="mt-1">
@@ -104,42 +104,25 @@ export default function Login({ onLogin }: LoginProps) {
             </div>
 
             {error && (
-              <div className="text-red-600 text-sm bg-red-50 p-2 rounded">
+              <div className="text-red-600 text-sm bg-red-50 p-2 rounded border border-red-200">
                 {error}
               </div>
             )}
 
             <div>
-              <label className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+              <label className="flex items-center gap-2 text-xs text-brand-600 mb-3">
                 <input type="checkbox" checked={rememberEmail} onChange={(e) => setRememberEmail(e.target.checked)} />
                 Remember email on this device
               </label>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-brand-900 bg-yellow-400 hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : 'Sign in'}
               </button>
             </div>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Demo Credentials
-                </span>
-              </div>
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-2 text-xs text-center text-gray-500">
-               <p>Admin: admin@example.com / Passw0rd!</p>
-               <p>Agent: agent@example.com / Passw0rd!</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

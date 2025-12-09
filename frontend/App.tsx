@@ -5,7 +5,6 @@ import AgentDashboard from './pages/AgentDashboard';
 import ClientSigning from './pages/ClientSigning';
 import Login from './pages/Login';
 import { User, UserRole } from './types';
-import { clearSession } from './services/storage';
 import { setToken, getToken, AuthAPI } from './services/api';
 
 // Protected Route Component
@@ -64,7 +63,7 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Navigate to={currentUser ? (currentUser.role === UserRole.ADMIN ? "/admin" : "/agent") : "/login"} replace />} />
+        <Route path="/" element={<Navigate to={currentUser ? (currentUser.role === UserRole.ADMIN ? "/admin" : "/support") : "/login"} replace />} />
 
         <Route
           path="/admin"
@@ -76,7 +75,7 @@ export default function App() {
         />
 
         <Route
-          path="/agent"
+          path="/support"
           element={
             <ProtectedRoute allowedRoles={[UserRole.AGENT]} user={currentUser}>
               <AgentDashboard user={currentUser!} onLogout={handleLogout} />

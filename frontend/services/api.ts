@@ -18,7 +18,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 }
 
 export const AuthAPI = {
-  async register(payload: { name: string; email: string; password: string; role?: 'admin'|'agent'|'client' }) {
+  async register(payload: { name: string; email: string; password: string; role?: 'admin' | 'agent' | 'client' }) {
     return apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
   },
   async login(payload: { email: string; password: string }) {
@@ -29,7 +29,25 @@ export const AuthAPI = {
   },
   async googleVerify(body: { idToken: string; docId: string }) {
     return apiFetch('/auth/google-verify', { method: 'POST', body: JSON.stringify(body) });
+  },
+  async updateProfile(payload: { signature?: string; name?: string }) {
+    return apiFetch('/users/profile', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  async testEmail(recipient: string) {
+    return apiFetch('/debug/test-email', { method: 'POST', body: JSON.stringify({ recipient }) });
   }
+};
+
+export const UsersAPI = {
+  async list() {
+    return apiFetch('/users');
+  },
+  async toggle(id: string) {
+    return apiFetch(`/users/${id}/toggle`, { method: 'PATCH' });
+  },
+  async delete(id: string) {
+    return apiFetch(`/users/${id}`, { method: 'DELETE' });
+  },
 };
 
 export const DocumentsAPI = {
@@ -47,7 +65,7 @@ export const DocumentsAPI = {
   async create(payload: any) {
     return apiFetch('/documents', { method: 'POST', body: JSON.stringify(payload) });
   },
-  async sign(id: string, payload: { dataUrl: string; token: string }) {
+  async sign(id: string, payload: { dataUrl: string; token: string; signerEmail?: string }) {
     return apiFetch(`/documents/${id}/sign`, { method: 'POST', body: JSON.stringify(payload) });
   },
   async resend(id: string) {
@@ -55,5 +73,9 @@ export const DocumentsAPI = {
   },
   async delete(id: string) {
     return apiFetch(`/documents/${id}`, { method: 'DELETE' });
+  },
+  async import(docs: any[]) {
+    // Backend accepts array payload directly
+    return apiFetch('/documents/import', { method: 'POST', body: JSON.stringify(docs) });
   }
 };

@@ -8,6 +8,7 @@ const SESSION_KEY = 'signflow_session';
 // Initialize mock data if empty
 const initData = () => {
   if (!localStorage.getItem(USERS_KEY)) {
+    console.log('[storage] initializing default users in localStorage');
     const admin: User = {
       id: 'admin-1',
       email: 'admin@signflow.com',
@@ -25,9 +26,11 @@ const initData = () => {
       }
     ];
     localStorage.setItem(USERS_KEY, JSON.stringify([admin, ...agents]));
+    console.log('[storage] default users written', { count: 1 + agents.length });
   }
   if (!localStorage.getItem(DOCS_KEY)) {
     localStorage.setItem(DOCS_KEY, JSON.stringify([]));
+    console.log('[storage] default docs array initialized');
   }
 };
 
@@ -70,7 +73,11 @@ export const clearSession = () => {
 
 export const getAgents = (): Agent[] => {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  return users.filter((u: User) => u.role === UserRole.AGENT);
+  const agents = users.filter(
+    (u: User) => u.role === UserRole.AGENT || u.role === UserRole.ADMIN
+  );
+  console.log('[storage] getAgents()', { totalUsers: users.length, agents: agents.length });
+  return agents;
 };
 
 export const createAgent = (agent: Omit<Agent, 'id' | 'role'>) => {
@@ -82,16 +89,45 @@ export const createAgent = (agent: Omit<Agent, 'id' | 'role'>) => {
   };
   users.push(newAgent);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  console.log('[storage] createAgent()', { email: newAgent.email, id: newAgent.id });
   return newAgent;
+};
+
+export const createAdminUser = (admin: Omit<Agent, 'id' | 'role'>) => {
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  const newAdmin: Agent = {
+    ...admin,
+    id: `admin-${Date.now()}`,
+    role: UserRole.ADMIN,
+  };
+  users.push(newAdmin);
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  console.log('[storage] createAdminUser()', { email: newAdmin.email, id: newAdmin.id });
+  return newAdmin;
 };
 
 export const toggleAgentStatus = (id: string) => {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
   const index = users.findIndex((u: User) => u.id === id);
-  if (index > -1 && users[index].role === UserRole.AGENT) {
+  if (
+    index > -1 &&
+    (users[index].role === UserRole.AGENT || users[index].role === UserRole.ADMIN)
+  ) {
     users[index].active = !users[index].active;
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
   }
+};
+
+export const deleteAgent = (id: string) => {
+  const users: User[] = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  const next = users.filter(
+    u =>
+      !(
+        u.id === id &&
+        (u.role === UserRole.AGENT || u.role === UserRole.ADMIN)
+      )
+  );
+  localStorage.setItem(USERS_KEY, JSON.stringify(next));
 };
 
 // --- Document Management ---

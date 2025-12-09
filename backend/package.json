@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon src/server.ts",
+    "dev": "nodemon --watch src --ext ts --exec \"ts-node src/server.ts\"",
     "seed": "ts-node src/scripts/seed.ts",
     "build": "tsc",
     "start": "node dist/server.js"
