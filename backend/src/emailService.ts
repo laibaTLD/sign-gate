@@ -7,13 +7,13 @@ const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
     // Gmail: secure true for 465 (SSL), false for ports like 587 (STARTTLS)
-    secure: Number(process.env.SMTP_PORT) === 465,
+    secure: true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     }
 });
-
+console.log("Password", process.env.SMTP_PASS)
 export const sendAgreementEmail = async (
     to: string,
     agentEmail: string,
@@ -48,7 +48,7 @@ export const sendAgreementEmail = async (
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #777;">
-        Sent via SignFlow | US Brand Booster LLC<br/>
+        Sent via SignDesk | US Brand Booster LLC<br/>
         Authorized Agent: ${agentName} (${agentEmail})
       </p>
     </div>

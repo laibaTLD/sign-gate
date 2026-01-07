@@ -20,7 +20,7 @@ export default function Layout({ children, user, onLogout, title }: LayoutProps)
         <div className="p-6 border-b border-brand-700">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <PenTool className="text-yellow-400" />
-            SignFlow
+            SignDesk
           </h1>
           <p className="text-xs text-brand-300 mt-1 uppercase tracking-wider">
             {user.role === UserRole.ADMIN ? 'Admin Portal' : user.role === UserRole.AGENT ? 'Support Portal' : 'Portal'}

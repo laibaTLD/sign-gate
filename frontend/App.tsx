@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AdminDashboard from './pages/AdminDashboard';
-import AgentDashboard from './pages/AgentDashboard';
+import SupportDashboard from './pages/SupportDaashboard';
 import ClientSigning from './pages/ClientSigning';
 import Login from './pages/Login';
 import { User, UserRole } from './types';
@@ -25,7 +25,7 @@ const ProtectedRoute = ({
 
   if (!allowedRoles.includes(user.role)) {
     // Redirect based on role if trying to access unauthorized area
-    const redirectTarget = user.role === UserRole.ADMIN ? '/admin' : '/agent';
+    const redirectTarget = user.role === UserRole.ADMIN ? '/admin' : '/support';
     return <Navigate to={redirectTarget} replace />; 
   }
 
@@ -78,7 +78,7 @@ export default function App() {
           path="/support"
           element={
             <ProtectedRoute allowedRoles={[UserRole.AGENT]} user={currentUser}>
-              <AgentDashboard user={currentUser!} onLogout={handleLogout} />
+              <SupportDashboard user={currentUser!} onLogout={handleLogout} />
             </ProtectedRoute>
           }
         />

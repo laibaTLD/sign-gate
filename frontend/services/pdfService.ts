@@ -198,15 +198,39 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       partiesItems.push({ text: 'Client:', isBold: true, size: 11 });
       partiesItems.push({ text: `Business Name: ${docData.clientCompanyName || docData.clientCompany || 'N/A'}` });
       partiesItems.push({ text: `Business Owner: ${docData.businessOwnerName || docData.clientName || 'N/A'}` });
-      partiesItems.push({ text: `Email: ${docData.clientEmail}` });
+      partiesItems.push({ text: `Email: ${docData.clientEmail || 'N/A'}` });
     } else {
-      partiesItems.push({ text: `Service Provider: ${docData.agencyName || 'SignFlow Agency'}` });
-      partiesItems.push({ text: `Client: ${docData.clientName}` });
+      partiesItems.push({ text: `Service Provider: ${docData.agencyName || 'SignDesk Agency'}` });
+      partiesItems.push({ text: `Client: ${docData.clientName || 'N/A'}` });
     }
     drawBlock('PARTIES TO THIS AGREEMENT', partiesItems);
 
+    // 2. CLIENT DETAILS / CONTACT INFO
+    const clientItems: any[] = [];
+    clientItems.push({ text: `Client Name: ${docData.clientName || docData.businessOwnerName || 'N/A'}` });
+    clientItems.push({ text: `Company: ${docData.clientCompanyName || docData.clientCompany || 'N/A'}` });
+    if (docData.clientEmail) clientItems.push({ text: `Email: ${docData.clientEmail}` });
+    if (docData.clientPhone) clientItems.push({ text: `Phone: ${docData.clientPhone}` });
+    if (docData.clientAddress) clientItems.push({ text: `Address: ${docData.clientAddress}` });
+    if (docData.clientCityStateZip) clientItems.push({ text: `City / State / Zip: ${docData.clientCityStateZip}` });
+    if (docData.clientCountry) clientItems.push({ text: `Country: ${docData.clientCountry}` });
+    if (clientItems.length) {
+      drawBlock('CLIENT DETAILS', clientItems);
+    }
+
+    // 3. PROJECT DETAILS
+    const projectItems: any[] = [];
+    projectItems.push({ text: `Document Title: ${docData.title || 'Service Agreement'}` });
+    if (docData.projectName) projectItems.push({ text: `Project: ${docData.projectName}` });
+    if (docData.startDate) projectItems.push({ text: `Start Date: ${docData.startDate}` });
+    if (docData.endDate) projectItems.push({ text: `End / Delivery Date: ${docData.endDate}` });
+    if (docData.clientDomain) projectItems.push({ text: `Client Domain: ${docData.clientDomain}` });
+    if (projectItems.length) {
+      drawBlock('PROJECT DETAILS', projectItems);
+    }
+
     if (isUSBrandBooster) {
-      // 2. OVERVIEW
+      // 4. OVERVIEW
       const ovItems: any[] = [];
       const ovText = docData.serviceOverviewDetails || `- Tailored Content: Unique content aligned with your business nature and target audience.
 - Geographic Targeting: Optimize Google Guarantee for specific cities of your choice, expanding your local reach – rely on chosen list of zip codes of the supplied services. The customer will supply a list.
@@ -225,7 +249,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       });
       drawBlock('SERVICE OVERVIEW', ovItems);
 
-      // 3. PAYMENT
+      // 5. PAYMENT
       const payItems: any[] = [];
       const cCo = docData.clientCompanyName || docData.clientCompany || 'Client';
       const upf = docData.upfrontPayment || '350';
@@ -238,7 +262,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
 
       drawBlock('PAYMENT TERMS', payItems);
 
-      // 4. SCOPE
+      // 6. SCOPE
       const scItems: any[] = [];
       scItems.push({ text: 'Following are the services in scope:', size: 10 });
       const scText = docData.servicesInScopeDetails || `- Create the Mockup pages for the ${cCo} verification and approval. Supply 3 reviews before uploading the live pages to the Web.
@@ -259,7 +283,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       });
       drawBlock('SERVICES IN SCOPE', scItems);
 
-      // 5. POLICY (Light Red)
+      // 7. POLICY (Light Red)
       const polItems: any[] = [];
       polItems.push({ text: 'Cancellation Policy', isBold: true });
       polItems.push({ text: 'At US Brand Booster LLC, we do not require a long-term contract. However, we do ask for a 15-day cancellation notice to ensure a smooth transition of all domain, hosting, and social platform credentials to your ownership.', isBullet: true });
@@ -269,11 +293,22 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       drawBlock('PRIVACY POLICY & TERMS & CONDITION', polItems);
 
     } else {
-      // Generic
+      // Generic layout for non-US Brand Booster templates
       if (docData.scopeOfWork) {
         drawBlock('SCOPE OF WORK', [{ text: docData.scopeOfWork }]);
       }
-      if (yPosition < 200) { page = pdfDoc.addPage([595, 842]); drawWatermark(page); yPosition = 800; }
+      if (docData.paymentTerms) {
+        drawBlock('PAYMENT TERMS', [{ text: docData.paymentTerms }]);
+      }
+      if (docData.specialNotes) {
+        drawBlock('SPECIAL NOTES / CLAUSES', [{ text: docData.specialNotes }]);
+      }
+
+      if (yPosition < 200) {
+        page = pdfDoc.addPage([595, 842]);
+        drawWatermark(page);
+        yPosition = 800;
+      }
       yPosition -= 20;
       drawTextLine('AGREEMENT SIGNATURES', 12, true);
       drawTextLine(`Service Provider: ${docData.agencyName || 'Agency'}`, 10);
@@ -343,7 +378,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     if (yPosition < 50) { page = pdfDoc.addPage([595, 842]); drawWatermark(page); yPosition = 800; }
     yPosition -= 30;
     page.drawText('This agreement is legally binding upon signature by both parties.', { x: margin, y: yPosition, size: 8, color: rgb(0.5, 0.5, 0.5), font });
-    page.drawText('Generated via SignFlow', { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
+    page.drawText('Generated via SignDesk', { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
 
     const pdfBytes = await pdfDoc.save();
     return { pdf: bytesToBase64(pdfBytes), lastY: yPosition };

@@ -27,6 +27,15 @@ export default function ClientSigning() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
 
+  const buildSignedPdfHref = (signedPdfUrl?: string) => {
+    if (!signedPdfUrl) return undefined;
+    const value = String(signedPdfUrl);
+    if (value.startsWith('data:application/pdf')) {
+      return value;
+    }
+    return `data:application/pdf;base64,${value}`;
+  };
+
   // Parse docId and token from hash: #/sign/:id?token=...
   const parseIds = () => {
     const rawHash = location.hash || window.location.hash || '';
@@ -219,7 +228,7 @@ export default function ClientSigning() {
                 <p className="text-gray-600 mb-6">This document was signed on {new Date(doc.signedAt!).toLocaleString()}.</p>
                 {doc.signedPdfUrl && (
                   <a 
-                    href={`data:application/pdf;base64,${doc.signedPdfUrl}`} 
+                    href={buildSignedPdfHref(doc.signedPdfUrl)} 
                     download="signed_document.pdf"
                     className="bg-yellow-400 text-brand-900 px-4 py-2 rounded hover:bg-yellow-300"
                   >

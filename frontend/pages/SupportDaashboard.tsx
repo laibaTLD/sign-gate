@@ -6,13 +6,16 @@ import { generateBasePdf } from '../services/pdfService';
 import { Plus, Send, Copy, FileCheck, User as UserIcon, Briefcase, FileText, Trash, Settings, Upload, Image as ImageIcon, Save, AlertTriangle } from 'lucide-react'; // Added icons
 import { DocumentsAPI, AuthAPI } from '../services/api'; // Added AuthAPI
 import AgreementTemplates, { AgreementTemplate, availableTemplates } from '../components/AgreementTemplates';
+import SupportDocumentsTable from '../components/SupportDocumentsTable';
+import SupportCopyLinkModal from '../components/SupportCopyLinkModal';
+import SupportResentLinkModal from '../components/SupportResentLinkModal';
 
 interface Props {
   user: User;
   onLogout: () => void;
 }
 
-export default function AgentDashboard({ user, onLogout }: Props) {
+export default function SupportDashboard({ user, onLogout }: Props) {
   const [localUser, setLocalUser] = useState<User>(user); // Local copy of user for profile updates
   const [docs, setDocs] = useState<any[]>([]);
   const [view, setView] = useState<'list' | 'create' | 'settings'>('list'); // Added 'settings' view
@@ -42,7 +45,7 @@ export default function AgentDashboard({ user, onLogout }: Props) {
     specialNotes: '',
 
     // Agency Info
-    agencyName: 'SignFlow Agency',
+    agencyName: 'SignDesk Agency',
     agencyEmail: 'info@usbrandbooster.com',
     agencyPhone: '',
 
@@ -91,7 +94,7 @@ export default function AgentDashboard({ user, onLogout }: Props) {
           .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
       );
     } catch (e) {
-      console.error('[AgentDashboard] load() failed', e);
+      console.error('[SupportDashboard] load() failed', e);
       setDocs([]);
     }
   };
@@ -199,7 +202,7 @@ export default function AgentDashboard({ user, onLogout }: Props) {
         scopeOfWork: '',
         paymentTerms: '',
         specialNotes: '',
-        agencyName: 'SignFlow Agency',
+        agencyName: 'SignDesk Agency',
         agencyEmail: 'info@usbrandbooster.com',
         agencyPhone: '',
         clientCompanyName: '',
@@ -339,119 +342,25 @@ export default function AgentDashboard({ user, onLogout }: Props) {
             </div>
           </div>
 
-          <div className="bg-white shadow-sm rounded-lg border border-brand-100 overflow-hidden">
-            <table className="min-w-full divide-y divide-brand-100">
-              <thead className="bg-brand-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-brand-500 uppercase tracking-wider">Document</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-brand-500 uppercase tracking-wider">Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-brand-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-brand-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-brand-100">
-                {docs.map((doc: any) => (
-                  <tr key={doc._id || doc.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-brand-900">{doc.title}</div>
-                      <div className="text-xs text-brand-500">{doc.projectName || doc?.metadata?.projectName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-brand-900">{doc.clientName || doc?.metadata?.clientName}</div>
-                      <div className="text-xs text-brand-500">{doc.clientEmail || doc?.metadata?.clientEmail}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${String(doc.status).toLowerCase() === 'signed' ? 'bg-brand-800 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {doc.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-4">
-                      <>
-                        <button onClick={() => copyLink(doc)} className="text-yellow-600 hover:text-yellow-500 flex items-center gap-1">
-                          <Copy size={16} /> Copy Link
-                        </button>
-                        {String(doc.status).toLowerCase() !== 'signed' && (
-                          <button onClick={() => resendLink(doc)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1">
-                            <Send size={16} /> Resend Link
-                          </button>
-                        )}
+          <SupportDocumentsTable
+            docs={docs}
+            onCopyLink={copyLink}
+            onResendLink={resendLink}
+          />
 
-      {isResentModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 whitespace-normal">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                <Send size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Signing link resent</h3>
-                <p className="text-xs text-gray-500 break-words">If SMTP is configured, the client will receive an email with the updated signing link.</p>
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 flex justify-end">
-              <button
-                type="button"
-                className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={() => setIsResentModalOpen(false)}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <SupportResentLinkModal
+            isOpen={isResentModalOpen}
+            onClose={() => setIsResentModalOpen(false)}
+          />
 
-      {isCopyModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 whitespace-normal">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
-            <div className="px-6 py-4 border-b flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <Copy size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Signing link copied</h3>
-                <p className="text-xs text-gray-500">You can paste this link into an email, chat, or message to your client.</p>
-              </div>
-            </div>
-            <div className="px-6 py-4 text-sm text-gray-700 space-y-3">
-              <div className="rounded-md bg-gray-50 px-3 py-2 border border-gray-200 text-xs break-all font-mono text-gray-700 max-w-full overflow-x-auto">
-                <span className="break-all">{copiedLink}</span>
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 flex justify-end">
-              <button
-                type="button"
-                className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={() => {
-                  setIsCopyModalOpen(false);
-                  setCopiedLink(null);
-                }}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-                        {String(doc.status).toLowerCase() === 'signed' ? (
-                          <a
-                            href={doc.signedPdfUrl ? `data:application/pdf;base64,${doc.signedPdfUrl}` : undefined}
-                            download={`${doc.title}-signed.pdf`}
-                            className="text-green-600 hover:text-green-900 flex items-center gap-1"
-                          >
-                            <FileCheck size={16} /> Download
-                          </a>
-                        ) : null}
-                      </>
-                    </td>
-                  </tr>
-                ))}
-                {docs.length === 0 && (
-                  <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500">No documents created yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <SupportCopyLinkModal
+            isOpen={isCopyModalOpen}
+            link={copiedLink}
+            onClose={() => {
+              setIsCopyModalOpen(false);
+              setCopiedLink(null);
+            }}
+          />
         </div>
       )}
       {
@@ -727,7 +636,7 @@ export default function AgentDashboard({ user, onLogout }: Props) {
                           <input name="agencyName" value={formData.agencyName} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Agent Name</label>
+                          <label className="block text-sm font-medium text-gray-700">Support Name</label>
                           <input disabled value={user.name} className="mt-1 block w-full border border-gray-200 bg-gray-50 rounded p-2 text-sm text-gray-500" />
                           <span className="text-xs text-gray-400">Auto-filled from login</span>
                         </div>
@@ -764,7 +673,7 @@ export default function AgentDashboard({ user, onLogout }: Props) {
         view === 'settings' && (
           <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">Agent Profile Settings</h3>
+              <h3 className="text-xl font-bold text-gray-900">Support Profile Settings</h3>
               <button onClick={() => setView('list')} className="text-gray-500 hover:text-gray-700">Cancel</button>
             </div>
 
