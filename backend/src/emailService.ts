@@ -48,7 +48,7 @@ export const sendAgreementEmail = async (
       <br/>
       <hr/>
       <p style="font-size: 12px; color: #777;">
-        Sent via SignDesk | US Brand Booster LLC<br/>
+        Sent via AutoSign | US Brand Booster LLC<br/>
         Authorized Agent: ${agentName} (${agentEmail})
       </p>
     </div>

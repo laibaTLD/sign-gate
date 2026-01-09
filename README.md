@@ -1,4 +1,4 @@
-# SignDesk - Agreement Template Documentation
+# AutoSign - Agreement Template Documentation
 
 ## Overview
 

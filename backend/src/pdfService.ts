@@ -148,7 +148,7 @@ export const embedSignatureInPdf = async (
     // Adjust footer position
     const footerY = addedNewPage ? 50 : (currentY - 100);
 
-    certPage.drawText('This document has been digitally signed and secured via SignDesk.', {
+    certPage.drawText('This document has been digitally signed and secured via AutoSign.', {
       x: 50,
       y: footerY,
       size: 10,

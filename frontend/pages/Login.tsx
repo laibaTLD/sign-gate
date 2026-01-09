@@ -80,7 +80,7 @@ export default function Login({ onLogin }: LoginProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-brand-200 rounded-md shadow-sm placeholder-brand-400 focus:outline-none focus:ring-yellow-400 focus:border-yellow-400 sm:text-sm"
-                  placeholder="admin@signdesk.com"
+                  placeholder="admin@autosign.com"
                 />
               </div>
             </div>

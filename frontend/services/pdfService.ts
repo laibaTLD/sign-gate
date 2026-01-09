@@ -200,7 +200,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       partiesItems.push({ text: `Business Owner: ${docData.businessOwnerName || docData.clientName || 'N/A'}` });
       partiesItems.push({ text: `Email: ${docData.clientEmail || 'N/A'}` });
     } else {
-      partiesItems.push({ text: `Service Provider: ${docData.agencyName || 'SignDesk Agency'}` });
+      partiesItems.push({ text: `Service Provider: ${docData.agencyName || 'AutoSign Agency'}` });
       partiesItems.push({ text: `Client: ${docData.clientName || 'N/A'}` });
     }
     drawBlock('PARTIES TO THIS AGREEMENT', partiesItems);
@@ -378,7 +378,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     if (yPosition < 50) { page = pdfDoc.addPage([595, 842]); drawWatermark(page); yPosition = 800; }
     yPosition -= 30;
     page.drawText('This agreement is legally binding upon signature by both parties.', { x: margin, y: yPosition, size: 8, color: rgb(0.5, 0.5, 0.5), font });
-    page.drawText('Generated via SignDesk', { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
+    page.drawText('Generated via AutoSign', { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
 
     const pdfBytes = await pdfDoc.save();
     return { pdf: bytesToBase64(pdfBytes), lastY: yPosition };

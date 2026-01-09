@@ -45,7 +45,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
     specialNotes: '',
 
     // Agency Info
-    agencyName: 'SignDesk Agency',
+    agencyName: 'AutoSign Agency',
     agencyEmail: 'info@usbrandbooster.com',
     agencyPhone: '',
 
@@ -202,7 +202,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
         scopeOfWork: '',
         paymentTerms: '',
         specialNotes: '',
-        agencyName: 'SignDesk Agency',
+        agencyName: 'AutoSign Agency',
         agencyEmail: 'info@usbrandbooster.com',
         agencyPhone: '',
         clientCompanyName: '',
