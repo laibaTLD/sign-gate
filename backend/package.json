@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec \"ts-node src/server.ts\"",
     "seed": "ts-node src/scripts/seed.ts",
+    "create:user": "ts-node src/scripts/create-user.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },
