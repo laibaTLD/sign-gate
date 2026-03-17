@@ -1,22 +1,24 @@
-# Backend Dockerfile
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
-# Build TypeScript
+# Build the application
 RUN pnpm build
 
 # Expose port
 EXPOSE 5000
 
-# Start the server
-CMD ["node", "dist/server.js"]
+# Start the application
+CMD ["pnpm", "start"]

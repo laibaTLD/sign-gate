@@ -1,31 +1,24 @@
-# Frontend Dockerfile - Build and serve
-FROM node:20-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
-# Build the app
+# Build the application
 RUN pnpm build
 
-# Production stage with nginx
-FROM nginx:alpine
+# Expose port
+EXPOSE 3000
 
-# Copy built app to nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the development server
+CMD ["pnpm", "dev"]

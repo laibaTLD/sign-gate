@@ -1,85 +1,48 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
   mongodb:
-    image: mongo:7-jammy
-    container_name: signflow-mongodb
+    image: mongo:7
+    container_name: sign-gate-mongodb
     restart: unless-stopped
-    expose:
-      - "27017"
+    ports:
+      - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
-      MONGO_INITDB_DATABASE: signflow
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: sign-gate
     volumes:
       - mongodb_data:/data/db
-      - ./backend/data:/docker-entrypoint-initdb.d:ro
-    networks:
-      - signflow-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
 
-  # Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: signflow-backend
+    container_name: sign-gate-backend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5000:5000"
+      - "5000:5000"
     environment:
-      NODE_ENV: production
-      PORT: 5000
-      MONGODB_URI: mongodb://admin:${MONGO_ROOT_PASSWORD:-changeme}@mongodb:27017/signflow?authSource=admin
-      JWT_SECRET: ${JWT_SECRET:-replace_with_strong_secret_in_production}
-      JWT_EXPIRE: ${JWT_EXPIRE:-30d}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
-    volumes:
-      - ./backend/data:/app/data:ro
-    networks:
-      - signflow-network
+      - PORT=5000
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/sign-gate?authSource=admin
+      - NODE_ENV=production
     depends_on:
-      mongodb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - mongodb
+    volumes:
+      - ./backend/data:/app/data
 
-  # Frontend web server
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: signflow-frontend
+    container_name: sign-gate-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3000:3000"
     environment:
-      - NODE_ENV=production
-    networks:
-      - signflow-network
+      - VITE_API_URL=http://localhost:5000
     depends_on:
       - backend
 
 volumes:
   mongodb_data:
-    driver: local
-
-networks:
-  signflow-network:
-    driver: bridge
