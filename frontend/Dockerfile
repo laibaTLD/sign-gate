@@ -1,5 +1,5 @@
-# Frontend Dockerfile - Multi-stage build
-FROM node:20-alpine AS builder
+# Frontend Dockerfile - Build only
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -14,17 +14,3 @@ COPY . .
 
 # Build the app
 RUN pnpm build
-
-# Production stage with nginx
-FROM nginx:alpine
-
-# Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]

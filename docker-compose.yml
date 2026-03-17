@@ -60,15 +60,13 @@ services:
       timeout: 10s
       retries: 3
 
-  # Frontend (Nginx - accessible from VPS nginx)
+  # Frontend build container
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: signflow-frontend
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3001:80"
     environment:
       - NODE_ENV=production
     networks:
