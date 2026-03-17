@@ -6,7 +6,7 @@ services:
     container_name: sign-gate-mongodb
     restart: unless-stopped
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${MONGO_PORT:-27018}:27017"
     volumes:
       - mongodb_data:/data/db
 
