@@ -39,8 +39,6 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3030}:3000"
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
     depends_on:
       - backend
 
