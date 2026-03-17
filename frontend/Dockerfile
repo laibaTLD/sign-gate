@@ -1,5 +1,5 @@
-# Frontend Dockerfile - Build only
-FROM node:20-alpine
+# Frontend Dockerfile - Build and serve
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -15,5 +15,17 @@ COPY . .
 # Build the app
 RUN pnpm build
 
-# Keep container running with a simple command
-CMD ["tail", "-f", "/dev/null"]
+# Production stage with nginx
+FROM nginx:alpine
+
+# Copy built app to nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
