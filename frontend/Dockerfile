@@ -14,3 +14,6 @@ COPY . .
 
 # Build the app
 RUN pnpm build
+
+# Keep container running with a simple command
+CMD ["tail", "-f", "/dev/null"]
