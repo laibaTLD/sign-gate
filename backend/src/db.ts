@@ -25,8 +25,8 @@ export async function ensureDefaultAdminUser() {
     const Users = await getUsersCollection();
     const count = await Users.countDocuments({});
     if (count > 0) return;
-    const email = 'admin@example.com';
-    const password = 'Passw0rd!';
+    const email = 'admin@gmail.com';
+    const password = 'admin';
     const hashedPassword = await bcrypt.hash(password, 10);
     await Users.insertOne({
       email,
