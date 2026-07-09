@@ -1,6 +1,6 @@
 import express from 'express';
 import { authRequired, requireRole } from '../middleware/auth';
-import { docsCollection, frontendUrl } from '../config';
+import { docsCollection, buildSigningLink, COMPANY_EMAIL } from '../config';
 import { mongoose } from '../db';
 import { Doc, mapAnyToDoc, uid } from '../models/doc';
 import { embedSignatureInPdf, generateBasePdf } from '../pdfService';
@@ -135,16 +135,20 @@ router.post('/api/documents', authRequired, requireRole('admin', 'agent'), async
     } as any);
 
     if (doc.metadata?.clientEmail) {
-      const agentEmail = doc.metadata.agencyEmail || 'info@usbrandbooster.com';
-      const link = `${frontendUrl.replace(/\/$/, '')}/#/sign/${encodeURIComponent(doc.id)}?token=${encodeURIComponent(doc.signToken || '')}`;
-      await sendAgreementEmail(
-        doc.metadata.clientEmail,
-        agentEmail,
-        doc.agentName || 'Agent',
-        doc.metadata.clientName || 'Client',
-        doc.title,
-        link
-      );
+      const agentEmail = doc.metadata.agencyEmail || COMPANY_EMAIL;
+      const link = buildSigningLink(doc.id, doc.signToken || '');
+      try {
+        await sendAgreementEmail(
+          doc.metadata.clientEmail,
+          agentEmail,
+          doc.agentName || 'Agent',
+          doc.metadata.clientName || 'Client',
+          doc.title,
+          link
+        );
+      } catch (emailErr) {
+        console.error('[documents] email failed (document still created):', emailErr);
+      }
     }
 
     res.status(201).json({ document: doc });
@@ -182,16 +186,21 @@ router.post('/api/documents/:id/resend', authRequired, requireRole('admin', 'age
     doc.signToken = newToken;
 
     if (doc.metadata?.clientEmail) {
-      const agentEmail = doc.metadata.agencyEmail || 'info@usbrandbooster.com';
-      const link = `${frontendUrl.replace(/\/$/, '')}/#/sign/${encodeURIComponent(doc.id)}?token=${encodeURIComponent(doc.signToken || '')}`;
-      await sendAgreementEmail(
-        doc.metadata.clientEmail,
-        agentEmail,
-        doc.agentName || 'Agent',
-        doc.metadata.clientName || 'Client',
-        doc.title,
-        link
-      );
+      const agentEmail = doc.metadata.agencyEmail || COMPANY_EMAIL;
+      const link = buildSigningLink(doc.id, doc.signToken || '');
+      try {
+        await sendAgreementEmail(
+          doc.metadata.clientEmail,
+          agentEmail,
+          doc.agentName || 'Agent',
+          doc.metadata.clientName || 'Client',
+          doc.title,
+          link
+        );
+      } catch (emailErr) {
+        console.error('[documents] resend email failed:', emailErr);
+        return res.status(500).json({ message: 'Failed to send email. Check SMTP configuration.' });
+      }
     }
 
     res.status(201).json({ document: doc });

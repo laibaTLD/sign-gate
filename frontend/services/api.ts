@@ -1,4 +1,4 @@
-const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api';
+const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
 
 export const getToken = () => localStorage.getItem('api_token') || '';
 export const setToken = (t: string) => localStorage.setItem('api_token', t);
@@ -33,8 +33,8 @@ export const AuthAPI = {
   async updateProfile(payload: { signature?: string; name?: string }) {
     return apiFetch('/users/profile', { method: 'POST', body: JSON.stringify(payload) });
   },
-  async testEmail(recipient: string) {
-    return apiFetch('/debug/test-email', { method: 'POST', body: JSON.stringify({ recipient }) });
+  async testEmail(recipient: string, documentId: string) {
+    return apiFetch('/debug/test-email', { method: 'POST', body: JSON.stringify({ recipient, documentId }) });
   }
 };
 

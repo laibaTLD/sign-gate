@@ -12,4 +12,12 @@ export const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
 export const oauthRedirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/auth/google-callback';
 export const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+export const COMPANY_NAME = 'US BRAND BOOSTER LLC';
+export const COMPANY_EMAIL = 'info@usbrandbooster.com';
+export const COMPANY_ADDRESS = '30 N Gould St Ste R, Sheridan, WY 82801';
+
+export function buildSigningLink(docId: string, signToken: string): string {
+  return `${frontendUrl.replace(/\/$/, '')}/sign/${encodeURIComponent(docId)}?token=${encodeURIComponent(signToken)}`;
+}
+
 export const googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;

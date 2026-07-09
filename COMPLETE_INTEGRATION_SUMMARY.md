@@ -1,8 +1,8 @@
-# ✅ SignFlow Dashboard - Complete Integration Summary
+# ✅ Sign Flow Dashboard - Complete Integration Summary
 
 ## 🎉 Integration Complete!
 
-Your SignFlow dashboard now has a complete agreement template system with the US Brand Booster template fully integrated!
+Your Sign Flow dashboard now has a complete agreement template system with the US Brand Booster template fully integrated!
 
 ---
 
@@ -226,8 +226,8 @@ Page 3:
   scopeOfWork: "...",
   
   // Agency fields
-  agencyName: "SignFlow Agency",
-  agencyEmail: "agent@signflow.com"
+  agencyName: "Sign Flow Agency",
+  agencyEmail: "agent@sign-flow.com"
 }
 
 ↓ Sent to backend
@@ -375,7 +375,7 @@ pnpm run dev
 
 ### 2. Access the Dashboard:
 - Open: http://localhost:3000
-- Login as agent: agent@signflow.com / agent123
+- Login as agent: agent@sign-flow.com / agent123
 
 ### 3. Create US Brand Booster Agreement:
 1. Click "Create New Document"
@@ -434,7 +434,7 @@ pnpm run dev
 
 ## 🎉 Success!
 
-Your SignFlow dashboard is now fully equipped with:
+Your Sign Flow dashboard is now fully equipped with:
 
 ✅ **US Brand Booster Template** - Complete with all fields from DocuSign  
 ✅ **Privacy Policy** - Full cancellation and refund terms  

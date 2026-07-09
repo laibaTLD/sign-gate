@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
+import { COMPANY_NAME, COMPANY_ADDRESS } from '../constants';
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -170,6 +171,10 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     // --- CONTENT GENERATION ---
 
     drawTextLine('DIGITAL MARKETING AGREEMENT', 18, true, rgb(0.17, 0.24, 0.31));
+    yPosition -= 10;
+
+    const clientLabel = docData.clientCompanyName || docData.clientCompany || docData.clientName || 'Client';
+    drawTextLine(`Between ${COMPANY_NAME} and ${clientLabel}`, 11, true, rgb(0.17, 0.24, 0.31));
     yPosition -= 15;
 
     // Underline
@@ -191,8 +196,8 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     // 1. PARTIES
     const partiesItems: any[] = [];
     if (isUSBrandBooster) {
-      partiesItems.push({ text: 'Service Provider: US Brand Booster LLC', isBold: true, size: 11 });
-      partiesItems.push({ text: 'Address: 30 N Gould St Ste R, Sheridan, WY 82801' });
+      partiesItems.push({ text: `Service Provider: ${COMPANY_NAME}`, isBold: true, size: 11 });
+      partiesItems.push({ text: `Address: ${COMPANY_ADDRESS}` });
       partiesItems.push({ text: 'Marketing Manager: Myra Dsouza' });
       partiesItems.push({ text: '' });
       partiesItems.push({ text: 'Client:', isBold: true, size: 11 });
@@ -200,7 +205,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       partiesItems.push({ text: `Business Owner: ${docData.businessOwnerName || docData.clientName || 'N/A'}` });
       partiesItems.push({ text: `Email: ${docData.clientEmail || 'N/A'}` });
     } else {
-      partiesItems.push({ text: `Service Provider: ${docData.agencyName || 'AutoSign Agency'}` });
+      partiesItems.push({ text: `Service Provider: ${docData.agencyName || COMPANY_NAME}` });
       partiesItems.push({ text: `Client: ${docData.clientName || 'N/A'}` });
     }
     drawBlock('PARTIES TO THIS AGREEMENT', partiesItems);
@@ -257,7 +262,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       const dom = docData.clientDomain || 'domain.com';
 
       payItems.push({ text: `The ${cCo} is going to pay $${upf} upfront for website development.` });
-      payItems.push({ text: `The ${cCo} is going to pay remaining $${rem} when the US BB makes the website live on ${cCo} domain (${dom}).` });
+      payItems.push({ text: `The ${cCo} is going to pay remaining $${rem} when ${COMPANY_NAME} makes the website live on ${cCo} domain (${dom}).` });
       payItems.push({ text: 'The Web-site will be developed on Word Press platform.' });
 
       drawBlock('PAYMENT TERMS', payItems);
@@ -286,7 +291,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       // 7. POLICY (Light Red)
       const polItems: any[] = [];
       polItems.push({ text: 'Cancellation Policy', isBold: true });
-      polItems.push({ text: 'At US Brand Booster LLC, we do not require a long-term contract. However, we do ask for a 15-day cancellation notice to ensure a smooth transition of all domain, hosting, and social platform credentials to your ownership.', isBullet: true });
+      polItems.push({ text: `At ${COMPANY_NAME}, we do not require a long-term contract. However, we do ask for a 15-day cancellation notice to ensure a smooth transition of all domain, hosting, and social platform credentials to your ownership.`, isBullet: true });
       polItems.push({ text: 'Non-Refundable Policy:', isBold: true });
       polItems.push({ text: 'Due to the immediate allocation of funds for service execution, all payments are non-refundable unless otherwise required by law. By making a payment, you waive any right to chargebacks or refunds unless expressly permitted in writing by the Company.', isBullet: true });
 
@@ -311,7 +316,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       }
       yPosition -= 20;
       drawTextLine('AGREEMENT SIGNATURES', 12, true);
-      drawTextLine(`Service Provider: ${docData.agencyName || 'Agency'}`, 10);
+      drawTextLine(`Service Provider: ${docData.agencyName || COMPANY_NAME}`, 10);
       drawTextLine(`Client: ${docData.clientName || 'Client'}`, 10);
       yPosition -= 30;
       drawTextLine('Signatures are collected digitally.', 10, false, rgb(0.5, 0.5, 0.5));
@@ -326,7 +331,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
       yPosition -= 10;
 
       // Agent Section
-      drawTextLine('Services Supplier: US Brand Booster LLC', 10, true);
+      drawTextLine(`Services Supplier: ${COMPANY_NAME}`, 10, true);
       drawTextLine(`Marketing Manager: ${docData.agentName || 'Myra Dsouza'}`, 10);
 
       yPosition -= 15;
@@ -378,7 +383,7 @@ export const generateBasePdf = async (docData: any): Promise<{ pdf: string, last
     if (yPosition < 50) { page = pdfDoc.addPage([595, 842]); drawWatermark(page); yPosition = 800; }
     yPosition -= 30;
     page.drawText('This agreement is legally binding upon signature by both parties.', { x: margin, y: yPosition, size: 8, color: rgb(0.5, 0.5, 0.5), font });
-    page.drawText('Generated via AutoSign', { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
+    page.drawText(`Generated by ${COMPANY_NAME}`, { x: margin, y: yPosition - 10, size: 8, color: rgb(0.5, 0.5, 0.5), font });
 
     const pdfBytes = await pdfDoc.save();
     return { pdf: bytesToBase64(pdfBytes), lastY: yPosition };

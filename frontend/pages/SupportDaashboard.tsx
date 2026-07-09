@@ -3,8 +3,9 @@ import Layout from '../components/Layout';
 import { User, DocumentData, DocumentStatus } from '../types';
 import { createDocument, getDocuments } from '../services/storage';
 import { generateBasePdf } from '../services/pdfService';
-import { Plus, Send, Copy, FileCheck, User as UserIcon, Briefcase, FileText, Trash, Settings, Upload, Image as ImageIcon, Save, AlertTriangle } from 'lucide-react'; // Added icons
-import { DocumentsAPI, AuthAPI } from '../services/api'; // Added AuthAPI
+import { Plus, Send, User as UserIcon, Briefcase, FileText, Settings, Upload, Image as ImageIcon, Save, RefreshCw, Clock, CheckCircle, ArrowLeft } from 'lucide-react';
+import { DocumentsAPI, AuthAPI } from '../services/api';
+import { COMPANY_NAME, COMPANY_EMAIL } from '../constants'; // Added AuthAPI
 import AgreementTemplates, { AgreementTemplate, availableTemplates } from '../components/AgreementTemplates';
 import SupportDocumentsTable from '../components/SupportDocumentsTable';
 import SupportCopyLinkModal from '../components/SupportCopyLinkModal';
@@ -45,8 +46,8 @@ export default function SupportDashboard({ user, onLogout }: Props) {
     specialNotes: '',
 
     // Agency Info
-    agencyName: 'AutoSign Agency',
-    agencyEmail: 'info@usbrandbooster.com',
+    agencyName: COMPANY_NAME,
+    agencyEmail: COMPANY_EMAIL,
     agencyPhone: '',
 
     // Template-specific fields (US Brand Booster)
@@ -78,6 +79,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [isResentModalOpen, setIsResentModalOpen] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -202,8 +204,8 @@ export default function SupportDashboard({ user, onLogout }: Props) {
         scopeOfWork: '',
         paymentTerms: '',
         specialNotes: '',
-        agencyName: 'AutoSign Agency',
-        agencyEmail: 'info@usbrandbooster.com',
+        agencyName: COMPANY_NAME,
+        agencyEmail: COMPANY_EMAIL,
         agencyPhone: '',
         clientCompanyName: '',
         businessOwnerName: '',
@@ -236,7 +238,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
         }
       } catch { }
     }
-    const base = `${window.location.origin}${window.location.pathname}#/sign/${backendId}`;
+    const base = `${window.location.origin}/sign/${backendId}`;
     const url = token ? `${base}?token=${token}` : base;
     navigator.clipboard.writeText(url);
     setCopiedLink(url);
@@ -244,12 +246,15 @@ export default function SupportDashboard({ user, onLogout }: Props) {
   };
 
   const resendLink = async (doc: DocumentData) => {
+    const backendId = String((doc as any)._id || (doc as any).id);
+    setResendingId(backendId);
     try {
-      const backendId = String((doc as any)._id || (doc as any).id);
       await DocumentsAPI.resend(backendId);
       setIsResentModalOpen(true);
     } catch (e: any) {
       alert(`Failed to resend link: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -318,26 +323,32 @@ export default function SupportDashboard({ user, onLogout }: Props) {
 
       {view === 'list' && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium text-brand-900">Your Documents</h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={load}
-                className="px-3 py-2 rounded border border-brand-200 text-sm hover:bg-brand-50"
-              >
-                Refresh
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center"><FileText size={18} className="text-brand-600" /></div>
+              <div><p className="text-xs text-brand-500 font-medium">Total</p><p className="text-2xl font-bold text-brand-900 tabular-nums">{docs.length}</p></div>
+            </div>
+            <div className="card p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center"><Clock size={18} className="text-yellow-600" /></div>
+              <div><p className="text-xs text-brand-500 font-medium">Pending</p><p className="text-2xl font-bold text-brand-900 tabular-nums">{docs.filter(d => String(d.status).toLowerCase() !== 'signed').length}</p></div>
+            </div>
+            <div className="card p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center"><CheckCircle size={18} className="text-green-600" /></div>
+              <div><p className="text-xs text-brand-500 font-medium">Signed</p><p className="text-2xl font-bold text-brand-900 tabular-nums">{docs.filter(d => String(d.status).toLowerCase() === 'signed').length}</p></div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <h3 className="text-lg font-semibold text-brand-900">Your Documents</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={load} className="btn btn-secondary btn-sm">
+                <RefreshCw size={14} /> Refresh
               </button>
-              <button
-                onClick={() => setView('create')}
-                className="bg-yellow-400 text-brand-900 px-4 py-2 rounded-lg shadow-sm hover:bg-yellow-300 flex items-center gap-2"
-              >
-                <Plus size={18} /> Create New Document
+              <button onClick={() => setView('settings')} className="btn btn-secondary btn-sm">
+                <Settings size={14} /> Settings
               </button>
-              <button
-                onClick={() => setView('settings')}
-                className="bg-white text-brand-700 border border-brand-200 px-4 py-2 rounded-lg shadow-sm hover:bg-brand-50 flex items-center gap-2"
-              >
-                <Settings size={18} /> Settings
+              <button onClick={() => setView('create')} className="btn btn-primary">
+                <Plus size={16} /> New Document
               </button>
             </div>
           </div>
@@ -346,6 +357,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
             docs={docs}
             onCopyLink={copyLink}
             onResendLink={resendLink}
+            resendingId={resendingId}
           />
 
           <SupportResentLinkModal
@@ -365,46 +377,36 @@ export default function SupportDashboard({ user, onLogout }: Props) {
       )}
       {
         view === 'create' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Create Agreement</h3>
-              <button onClick={() => setView('list')} className="text-gray-500 hover:text-gray-700">Cancel</button>
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <button onClick={() => setView('list')} className="btn btn-ghost btn-sm">
+                <ArrowLeft size={16} /> Back
+              </button>
+              <h3 className="text-xl font-bold text-brand-900">Create Agreement</h3>
             </div>
 
-            <div className="bg-white shadow rounded-lg overflow-hidden flex flex-col md:flex-row">
-              {/* Sidebar Tabs */}
-              <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 p-4 flex flex-col gap-2">
-                <button
-                  onClick={() => setActiveTab('template')}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${activeTab === 'template' ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  <FileText size={18} /> Agreement Template
-                </button>
-                <button
-                  onClick={() => setActiveTab('services')}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                  disabled={!selectedTemplate}
-                >
-                  <FileText size={18} /> Service Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('client')}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${activeTab === 'client' ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  <UserIcon size={18} /> Client Information
-                </button>
-                <button
-                  onClick={() => setActiveTab('project')}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${activeTab === 'project' ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  <FileText size={18} /> Project Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('agency')}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${activeTab === 'agency' ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  <Briefcase size={18} /> Agency Info
-                </button>
+            <div className="card overflow-hidden flex flex-col md:flex-row">
+              <div className="w-full md:w-56 bg-brand-50/80 border-r border-brand-100 p-3 flex flex-col gap-1">
+                {([
+                  { id: 'template' as const, label: 'Template', icon: FileText },
+                  { id: 'services' as const, label: 'Services', icon: FileText, disabled: !selectedTemplate },
+                  { id: 'client' as const, label: 'Client', icon: UserIcon },
+                  { id: 'project' as const, label: 'Project', icon: FileText },
+                  { id: 'agency' as const, label: 'Agency', icon: Briefcase },
+                ]).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    disabled={tab.disabled}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-white text-brand-900 shadow-sm border border-brand-100'
+                        : 'text-brand-500 hover:text-brand-700 hover:bg-white/60 disabled:opacity-40'
+                    }`}
+                  >
+                    <tab.icon size={16} /> {tab.label}
+                  </button>
+                ))}
               </div>
 
               {/* Form Content */}
@@ -429,40 +431,40 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                           <h4 className="text-lg font-medium border-b pb-2">Template-Specific Fields</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700">Client Company Name *</label>
+                              <label className="label">Client Company Name *</label>
                               <input
                                 name="clientCompanyName"
                                 required
                                 value={formData.clientCompanyName}
                                 onChange={handleInputChange}
                                 placeholder="e.g. Commercial Remodeling Contractors"
-                                className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm"
+                                className="input-field"
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700">Business Owner Name *</label>
+                              <label className="label">Business Owner Name *</label>
                               <input
                                 name="businessOwnerName"
                                 required
                                 value={formData.businessOwnerName}
                                 onChange={handleInputChange}
                                 placeholder="e.g. David Rozenstein"
-                                className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm"
+                                className="input-field"
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700">Client Domain Name *</label>
+                              <label className="label">Client Domain Name *</label>
                               <input
                                 name="clientDomain"
                                 required
                                 value={formData.clientDomain}
                                 onChange={handleInputChange}
                                 placeholder="e.g. commercialremodelingcontractors.com"
-                                className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm"
+                                className="input-field"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Upfront Payment ($) *</label>
+                              <label className="label">Upfront Payment ($) *</label>
                               <input
                                 name="upfrontPayment"
                                 type="number"
@@ -470,11 +472,11 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                                 value={formData.upfrontPayment}
                                 onChange={handleInputChange}
                                 placeholder="350"
-                                className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm"
+                                className="input-field"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700">Remaining Payment ($) *</label>
+                              <label className="label">Remaining Payment ($) *</label>
                               <input
                                 name="remainingPayment"
                                 type="number"
@@ -482,7 +484,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                                 value={formData.remainingPayment}
                                 onChange={handleInputChange}
                                 placeholder="650"
-                                className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm"
+                                className="input-field"
                               />
                             </div>
                           </div>
@@ -490,12 +492,7 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                       )}
 
                       <div className="flex justify-end pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('services')}
-                          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
-                          disabled={!selectedTemplate}
-                        >
+                        <button type="button" onClick={() => setActiveTab('services')} className="btn btn-dark" disabled={!selectedTemplate}>
                           Next: Service Details
                         </button>
                       </div>
@@ -505,38 +502,34 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                   {activeTab === 'services' && (
                     <div className="space-y-4 animate-fadeIn">
                       <h4 className="text-lg font-medium border-b pb-2 mb-4">Service Details</h4>
-                      <p className="text-sm text-gray-500 mb-4">Edit the bullet points below. Each line will be treated as a bullet point in the generated PDF.</p>
+                  <p className="text-sm text-brand-500 mb-4">Edit the bullet points below. Each line will be treated as a bullet point in the generated PDF.</p>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Service Overview</label>
+                        <label className="label">Service Overview</label>
                         <textarea
                           name="serviceOverviewDetails"
                           rows={8}
                           value={formData.serviceOverviewDetails}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm font-mono"
+                          className="input-field font-mono"
                           placeholder="- Item: Description"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Services in Scope</label>
+                        <label className="label">Services in Scope</label>
                         <textarea
                           name="servicesInScopeDetails"
                           rows={8}
                           value={formData.servicesInScopeDetails}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm font-mono"
+                          className="input-field font-mono"
                           placeholder="- Item description"
                         />
                       </div>
 
                       <div className="flex justify-end pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('client')}
-                          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
-                        >
+                        <button type="button" onClick={() => setActiveTab('client')} className="btn btn-dark">
                           Next: Client Information
                         </button>
                       </div>
@@ -548,36 +541,36 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                       <h4 className="text-lg font-medium border-b pb-2 mb-4">Client Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Full Name *</label>
-                          <input name="clientName" required value={formData.clientName} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Full Name *</label>
+                          <input name="clientName" required value={formData.clientName} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Company Name</label>
-                          <input name="clientCompany" value={formData.clientCompany} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Company Name</label>
+                          <input name="clientCompany" value={formData.clientCompany} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Gmail Address (Required) *</label>
-                          <input name="clientEmail" type="email" required value={formData.clientEmail} onChange={handleInputChange} placeholder="example@gmail.com" className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Gmail Address (Required) *</label>
+                          <input name="clientEmail" type="email" required value={formData.clientEmail} onChange={handleInputChange} placeholder="example@gmail.com" className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                          <input name="clientPhone" value={formData.clientPhone} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Phone Number</label>
+                          <input name="clientPhone" value={formData.clientPhone} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Address</label>
-                          <input name="clientAddress" value={formData.clientAddress} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Address</label>
+                          <input name="clientAddress" value={formData.clientAddress} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">City / State / Zip</label>
-                          <input name="clientCityStateZip" value={formData.clientCityStateZip} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">City / State / Zip</label>
+                          <input name="clientCityStateZip" value={formData.clientCityStateZip} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Country</label>
-                          <input name="clientCountry" value={formData.clientCountry} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Country</label>
+                          <input name="clientCountry" value={formData.clientCountry} onChange={handleInputChange} className="input-field" />
                         </div>
                       </div>
                       <div className="flex justify-end pt-4">
-                        <button type="button" onClick={() => setActiveTab('project')} className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">Next: Project Details</button>
+                        <button type="button" onClick={() => setActiveTab('project')} className="btn btn-dark">Next: Project Details</button>
                       </div>
                     </div>
                   )}
@@ -587,42 +580,42 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                       <h4 className="text-lg font-medium border-b pb-2 mb-4">Project & Terms</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Document Title / Type *</label>
-                          <input name="title" required value={formData.title} onChange={handleInputChange} placeholder="e.g. Service Agreement, NDA" className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Document Title / Type *</label>
+                          <input name="title" required value={formData.title} onChange={handleInputChange} placeholder="e.g. Service Agreement, NDA" className="input-field" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Project Name *</label>
-                          <input name="projectName" required value={formData.projectName} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Project Name *</label>
+                          <input name="projectName" required value={formData.projectName} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                          <input name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Start Date</label>
+                          <input name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">End / Delivery Date</label>
-                          <input name="endDate" type="date" value={formData.endDate} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">End / Delivery Date</label>
+                          <input name="endDate" type="date" value={formData.endDate} onChange={handleInputChange} className="input-field" />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">
+                          <label className="label">
                             Scope of Work / Description
                           </label>
-                          <textarea name="scopeOfWork" rows={5} value={formData.scopeOfWork} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <textarea name="scopeOfWork" rows={5} value={formData.scopeOfWork} onChange={handleInputChange} className="input-field" />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Payment Terms</label>
-                          <textarea name="paymentTerms" rows={3} value={formData.paymentTerms} onChange={handleInputChange} placeholder="e.g. 50% upfront, 50% on completion" className="block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Payment Terms</label>
+                          <textarea name="paymentTerms" rows={3} value={formData.paymentTerms} onChange={handleInputChange} placeholder="e.g. 50% upfront, 50% on completion" className="input-field" />
                         </div>
 
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Special Notes / Clauses</label>
-                          <textarea name="specialNotes" rows={3} value={formData.specialNotes} onChange={handleInputChange} className="block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Special Notes / Clauses</label>
+                          <textarea name="specialNotes" rows={3} value={formData.specialNotes} onChange={handleInputChange} className="input-field" />
                         </div>
                       </div>
                       <div className="flex justify-end pt-4 gap-2">
-                        <button type="button" onClick={() => setActiveTab('client')} className="px-4 py-2 text-gray-600 hover:text-gray-900">Back</button>
-                        <button type="button" onClick={() => setActiveTab('agency')} className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">Next: Agency Info</button>
+                        <button type="button" onClick={() => setActiveTab('client')} className="btn btn-ghost">Back</button>
+                        <button type="button" onClick={() => setActiveTab('agency')} className="btn btn-dark">Next: Agency Info</button>
                       </div>
                     </div>
                   )}
@@ -632,32 +625,28 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                       <h4 className="text-lg font-medium border-b pb-2 mb-4">Agency Information</h4>
                       <div className="grid grid-cols-1 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Agency / Company Name</label>
-                          <input name="agencyName" value={formData.agencyName} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Service Provider (Company)</label>
+                          <input name="agencyName" value={formData.agencyName} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm bg-gray-50" readOnly />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Support Name</label>
+                          <label className="label">Support Name</label>
                           <input disabled value={user.name} className="mt-1 block w-full border border-gray-200 bg-gray-50 rounded p-2 text-sm text-gray-500" />
                           <span className="text-xs text-gray-400">Auto-filled from login</span>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Agency Email</label>
-                          <input name="agencyEmail" value={formData.agencyEmail} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Agency Email</label>
+                          <input name="agencyEmail" value={formData.agencyEmail} onChange={handleInputChange} className="input-field" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Agency Phone</label>
-                          <input name="agencyPhone" value={formData.agencyPhone} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded p-2 text-sm" />
+                          <label className="label">Agency Phone</label>
+                          <input name="agencyPhone" value={formData.agencyPhone} onChange={handleInputChange} className="input-field" />
                         </div>
                       </div>
 
-                      <div className="flex justify-end pt-6 gap-2 border-t mt-6">
-                        <button type="button" onClick={() => setActiveTab('project')} className="px-4 py-2 text-gray-600 hover:text-gray-900">Back</button>
-                        <button
-                          type="submit"
-                          disabled={creating}
-                          className="bg-brand-600 text-white px-6 py-2 rounded shadow-sm hover:bg-brand-700 flex items-center gap-2 font-medium disabled:opacity-50"
-                        >
-                          <Send size={18} /> {creating ? 'Generating PDF...' : 'Create & Send Agreement'}
+                      <div className="flex justify-end pt-6 gap-2 border-t border-brand-100 mt-6">
+                        <button type="button" onClick={() => setActiveTab('project')} className="btn btn-ghost">Back</button>
+                        <button type="submit" disabled={creating} className="btn btn-primary">
+                          <Send size={16} /> {creating ? 'Generating PDF...' : 'Create & Send'}
                         </button>
                       </div>
                     </div>
@@ -672,41 +661,44 @@ export default function SupportDashboard({ user, onLogout }: Props) {
       {
         view === 'settings' && (
           <div className="max-w-3xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">Support Profile Settings</h3>
-              <button onClick={() => setView('list')} className="text-gray-500 hover:text-gray-700">Cancel</button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setView('list')} className="btn btn-ghost btn-sm">
+                <ArrowLeft size={16} /> Back
+              </button>
+              <h3 className="text-xl font-bold text-brand-900">Profile Settings</h3>
             </div>
 
-            <div className="bg-white shadow rounded-lg p-8">
-              <h4 className="text-lg font-medium text-gray-900 mb-6">Profile Signature</h4>
+            <div className="card">
+              <div className="card-body p-6 md:p-8">
+              <h4 className="text-base font-semibold text-brand-900 mb-6">Profile Signature</h4>
 
               <div className="flex flex-col md:flex-row gap-8 items-start">
                 <div className="flex-1 space-y-4">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-brand-500">
                     Upload your signature image to be automatically included in documents you generate.
                     For best results, use a PNG image with a transparent background.
                   </p>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Signature</label>
+                    <label className="label">Upload Signature</label>
                     <div className="flex items-center gap-4">
-                      <label className="cursor-pointer bg-white border border-gray-300 rounded-md shadow-sm px-4 py-2 inline-flex items-center justify-center text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        <Upload size={16} className="mr-2" />
+                      <label className="cursor-pointer btn btn-secondary">
+                        <Upload size={16} />
                         Choose File
                         <input type="file" className="hidden" accept="image/png,image/jpeg" onChange={handleSignatureUpload} />
                       </label>
-                      <span className="text-xs text-gray-500">Max 2MB. PNG/JPG</span>
+                      <span className="text-xs text-brand-400">Max 2MB · PNG/JPG</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="w-full md:w-1/2 flex justify-center">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-48 flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                  <div className="border-2 border-dashed border-brand-200 rounded-xl p-4 w-full h-48 flex items-center justify-center bg-brand-50 relative overflow-hidden">
                     {tempSignature ? (
                       <img src={tempSignature} alt="Signature Preview" className="max-h-full max-w-full object-contain" />
                     ) : (
-                      <div className="text-center text-gray-400">
-                        <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
+                      <div className="text-center text-brand-400">
+                        <ImageIcon size={40} className="mx-auto mb-2 opacity-50" />
                         <span className="text-sm">No signature uploaded</span>
                       </div>
                     )}
@@ -714,48 +706,67 @@ export default function SupportDashboard({ user, onLogout }: Props) {
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t flex justify-end">
-                <button
-                  onClick={saveProfile}
-                  disabled={isUploading}
-                  className="bg-brand-600 text-white px-6 py-2 rounded shadow-sm hover:bg-brand-700 flex items-center gap-2 font-medium disabled:opacity-50"
-                >
-                  <Save size={18} /> {isUploading ? 'Saving...' : 'Save Profile'}
+              <div className="mt-8 pt-6 border-t border-brand-100 flex justify-end">
+                <button onClick={saveProfile} disabled={isUploading} className="btn btn-primary">
+                  <Save size={16} /> {isUploading ? 'Saving...' : 'Save Profile'}
                 </button>
+              </div>
               </div>
             </div>
 
-            {/* Email Test Section */}
-            <div className="bg-white shadow rounded-lg p-8 mt-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Test Email Service</h4>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="card">
+              <div className="card-body p-6 md:p-8">
+              <h4 className="text-base font-semibold text-brand-900 mb-4">Test Email Service</h4>
+              <p className="text-sm text-brand-500 mb-4">
                 Send a test email to verify your SMTP configuration.
               </p>
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Email</label>
-                  <input
-                    type="email"
-                    placeholder="Enter email to test..."
-                    id="test-email-input"
-                    className="block w-full border border-gray-300 rounded p-2 text-sm"
-                  />
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="label">Document</label>
+                  <select
+                    id="test-email-doc"
+                    className="input-field"
+                    defaultValue={docs[0]?.id || ''}
+                  >
+                    {docs.length === 0 ? (
+                      <option value="">No documents available</option>
+                    ) : (
+                      docs.map((d) => (
+                        <option key={d.id} value={d.id}>{d.title} ({d.metadata?.clientName || 'Client'})</option>
+                      ))
+                    )}
+                  </select>
                 </div>
-                <button
-                  onClick={async () => {
-                    const input = document.getElementById('test-email-input') as HTMLInputElement;
-                    if (!input?.value) return alert('Please enter an email');
-                    try {
-                      await AuthAPI.testEmail(input.value);
-                      alert('Test email sent. Check your inbox (and spam folder).');
-                    } catch (e: any) {
-                      alert('Failed to send: ' + e.message);
-                    }
-                  }}
-                  className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 h-10"
-                >
-                  Send Test Email
-                </button>
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="label">Target Email</label>
+                    <input
+                      type="email"
+                      placeholder="Enter email to test..."
+                      id="test-email-input"
+                      className="input-field"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const input = document.getElementById('test-email-input') as HTMLInputElement;
+                      const docSelect = document.getElementById('test-email-doc') as HTMLSelectElement;
+                      if (!input?.value) return alert('Please enter an email');
+                      if (!docSelect?.value) return alert('Please select a document');
+                      try {
+                        await AuthAPI.testEmail(input.value, docSelect.value);
+                        alert('Test email sent. Check your inbox (and spam folder).');
+                      } catch (e: any) {
+                        alert('Failed to send: ' + e.message);
+                      }
+                    }}
+                    className="btn btn-dark h-10"
+                    disabled={docs.length === 0}
+                  >
+                    Send Test Email
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
           </div>

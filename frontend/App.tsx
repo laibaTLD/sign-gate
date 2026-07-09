@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AdminDashboard from './pages/AdminDashboard';
 import SupportDashboard from './pages/SupportDaashboard';
 import ClientSigning from './pages/ClientSigning';
 import Login from './pages/Login';
+import LoadingScreen from './components/ui/LoadingScreen';
 import { User, UserRole } from './types';
 import { setToken, getToken, AuthAPI } from './services/api';
 
@@ -58,10 +59,10 @@ export default function App() {
     setToken('');
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <LoadingScreen message="Authenticating..." />;
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to={currentUser ? (currentUser.role === UserRole.ADMIN ? "/admin" : "/support") : "/login"} replace />} />
 
@@ -89,6 +90,6 @@ export default function App() {
         <Route path="/sign/:token" element={<ClientSigning />} />
 
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }

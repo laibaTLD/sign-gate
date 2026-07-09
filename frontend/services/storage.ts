@@ -1,9 +1,9 @@
 
 import { User, UserRole, Agent, DocumentData, DocumentStatus } from '../types';
 
-const USERS_KEY = 'autosign_users';
-const DOCS_KEY = 'autosign_docs';
-const SESSION_KEY = 'autosign_session';
+const USERS_KEY = 'sign-flow_users';
+const DOCS_KEY = 'sign-flow_docs';
+const SESSION_KEY = 'sign-flow_session';
 
 // Initialize mock data if empty
 const initData = () => {
@@ -11,14 +11,14 @@ const initData = () => {
     console.log('[storage] initializing default users in localStorage');
     const admin: User = {
       id: 'admin-1',
-      email: 'admin@autosign.com',
+      email: 'admin@sign-flow.com',
       role: UserRole.ADMIN,
       name: 'Super Admin'
     };
     const agents: Agent[] = [
       {
         id: 'agent-1',
-        email: 'agent@autosign.com',
+        email: 'agent@sign-flow.com',
         role: UserRole.AGENT,
         name: 'John Agent',
         createdBy: 'admin-1',

@@ -18,7 +18,7 @@ app.use(cors());
 
 // Health check
 app.get('/', (_req, res) => {
-  res.json({ status: 'ok', service: 'signflow-server' });
+  res.json({ status: 'ok', service: 'sign-flow-server' });
 });
 
 // Routes

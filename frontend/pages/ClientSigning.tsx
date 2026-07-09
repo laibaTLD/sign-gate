@@ -1,81 +1,63 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { DocumentData, DocumentStatus } from '../types';
-import { DocumentsAPI, AuthAPI } from '../services/api';
-import { PenTool, Upload, RefreshCw, CheckCircle, Lock } from 'lucide-react';
+import { DocumentsAPI } from '../services/api';
+import { COMPANY_NAME } from '../constants';
+import { PenTool, Upload, RefreshCw, CheckCircle, Lock, Download, FileText, Loader2 } from 'lucide-react';
+import LoadingScreen from '../components/ui/LoadingScreen';
 
 export default function ClientSigning() {
-  const { token: pathToken } = useParams<{ token: string }>();
-  const location = useLocation();
+  const { token: docId } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const signToken = searchParams.get('token') || '';
   const [doc, setDoc] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Auth State
   const [email, setEmail] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Signing State
   const [signingMethod, setSigningMethod] = useState<'draw' | 'upload'>('draw');
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Canvas Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
 
   const buildSignedPdfHref = (signedPdfUrl?: string) => {
     if (!signedPdfUrl) return undefined;
     const value = String(signedPdfUrl);
-    if (value.startsWith('data:application/pdf')) {
-      return value;
-    }
+    if (value.startsWith('data:application/pdf')) return value;
     return `data:application/pdf;base64,${value}`;
-  };
-
-  // Parse docId and token from hash: #/sign/:id?token=...
-  const parseIds = () => {
-    const rawHash = location.hash || window.location.hash || '';
-    const withoutHash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash; // '/sign/:id?token=...'
-    const [pathPart, queryPart] = withoutHash.split('?');
-    const pathSegments = (pathPart || '').split('/'); // ['', 'sign', ':id']
-    const docId = pathSegments[2] || '';
-    const params = new URLSearchParams(queryPart || '');
-    const t = params.get('token') || '';
-    return { docId, token: t };
   };
 
   useEffect(() => {
     const load = async () => {
       try {
-        const { docId, token } = parseIds();
-        if (!docId || !token) {
+        if (!docId || !signToken) {
           setError('Invalid Document Link');
           setLoading(false);
           return;
         }
-        const resp = await DocumentsAPI.getPublic(docId, token);
-        setDoc({ ...resp.document, _id: docId, signToken: token });
-      } catch (e: any) {
+        const resp = await DocumentsAPI.getPublic(docId, signToken);
+        setDoc({ ...resp.document, _id: docId, signToken });
+      } catch {
         setError('Invalid Document Link');
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [location.key]);
+  }, [docId, signToken]);
   
-  // Classic OAuth popup: open backend Google login URL and wait for postMessage
   const handleGoogleClick = () => {
-    const { docId } = parseIds();
     if (!docId) {
       setAuthError('Invalid document link.');
       return;
     }
-
     const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
     const url = `${apiBase}/auth/google-login?${new URLSearchParams({ docId }).toString()}`;
     const popup = window.open(url, 'google-oauth', 'width=500,height=600');
@@ -84,17 +66,13 @@ export default function ClientSigning() {
     }
   };
 
-  // Listen for OAuth result from popup
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      // Accept messages only from backend origin in local dev
       const apiBase = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
       try {
         const apiOrigin = new URL(apiBase).origin;
         if (event.origin !== apiOrigin) return;
-      } catch {
-        // If URL parsing fails, ignore origin check
-      }
+      } catch { /* ignore */ }
 
       const data: any = event.data || {};
       if (data.type !== 'google-oauth-result') return;
@@ -108,28 +86,25 @@ export default function ClientSigning() {
         setAuthError(data.message || 'Google sign-in failed.');
       }
     };
-
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [setAuthenticated, setEmail, setAuthError]);
+  }, []);
 
-  // Canvas Logic
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     isDrawing.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
     const rect = canvas.getBoundingClientRect();
     const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
     const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
-    
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = 'black';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#171717';
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
@@ -137,11 +112,9 @@ export default function ClientSigning() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     const rect = canvas.getBoundingClientRect();
     const x = ('touches' in e ? e.touches[0].clientX : e.clientX) - rect.left;
     const y = ('touches' in e ? e.touches[0].clientY : e.clientY) - rect.top;
-
     ctx.lineTo(x, y);
     ctx.stroke();
   };
@@ -169,27 +142,19 @@ export default function ClientSigning() {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        // Normalize to PNG on a white background to ensure visibility and pdf-lib compatibility
-        const MAX_W = 600;
-        const MAX_H = 200;
-        let w = img.width;
-        let h = img.height;
+        const MAX_W = 600, MAX_H = 200;
+        let w = img.width, h = img.height;
         const ratio = Math.min(MAX_W / w, MAX_H / h, 1);
         w = Math.max(1, Math.round(w * ratio));
         h = Math.max(1, Math.round(h * ratio));
         const c = document.createElement('canvas');
-        c.width = MAX_W;
-        c.height = MAX_H;
+        c.width = MAX_W; c.height = MAX_H;
         const ctx = c.getContext('2d');
         if (!ctx) return;
-        // white background then center the signature image
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, c.width, c.height);
-        const x = Math.round((MAX_W - w) / 2);
-        const y = Math.round((MAX_H - h) / 2);
-        ctx.drawImage(img, x, y, w, h);
-        const data = c.toDataURL('image/png');
-        setSignatureData(data);
+        ctx.drawImage(img, Math.round((MAX_W - w) / 2), Math.round((MAX_H - h) / 2), w, h);
+        setSignatureData(c.toDataURL('image/png'));
       };
       img.src = reader.result as string;
     };
@@ -199,15 +164,12 @@ export default function ClientSigning() {
   const submitSignature = async () => {
     if (!doc || !signatureData) return;
     setSubmitting(true);
-    
     try {
-      // Send signature with signer email
       await DocumentsAPI.sign(doc._id || doc.id, { 
         dataUrl: signatureData, 
         token: doc.signToken,
-        signerEmail: email // Send the authenticated email
+        signerEmail: email
       });
-      
       setSuccess(true);
     } catch (err) {
       console.error(err);
@@ -217,57 +179,60 @@ export default function ClientSigning() {
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-brand-700">Loading Secure Document...</div>;
-  if (error || !doc) return <div className="p-10 text-center text-red-600 font-bold">{error || 'Document not found'}</div>;
-  if (doc.status === DocumentStatus.SIGNED && !success) {
-    return (
-        <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-lg shadow text-center max-w-md border border-brand-100">
-                <CheckCircle size={48} className="text-yellow-400 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Already Signed</h2>
-                <p className="text-gray-600 mb-6">This document was signed on {new Date(doc.signedAt!).toLocaleString()}.</p>
-                {doc.signedPdfUrl && (
-                  <a 
-                    href={buildSignedPdfHref(doc.signedPdfUrl)} 
-                    download="signed_document.pdf"
-                    className="bg-yellow-400 text-brand-900 px-4 py-2 rounded hover:bg-yellow-300"
-                  >
-                    Download Copy
-                  </a>
-                )}
+  const StepIndicator = ({ step }: { step: 1 | 2 | 3 }) => (
+    <div className="flex items-center justify-center gap-0 mb-8">
+      {[
+        { n: 1, label: 'Verify' },
+        { n: 2, label: 'Review & Sign' },
+        { n: 3, label: 'Done' },
+      ].map((s, i) => (
+        <React.Fragment key={s.n}>
+          <div className="flex flex-col items-center gap-1">
+            <div className={`step-dot ${step > s.n ? 'step-dot-done' : step === s.n ? 'step-dot-active' : 'step-dot-inactive'}`}>
+              {step > s.n ? <CheckCircle size={14} /> : s.n}
             </div>
+            <span className={`text-[10px] font-medium ${step >= s.n ? 'text-brand-700' : 'text-brand-400'}`}>{s.label}</span>
+          </div>
+          {i < 2 && <div className={`step-line ${step > s.n ? 'step-line-done' : ''}`} />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
+  if (loading) return <LoadingScreen message="Loading secure document..." />;
+
+  if (error || !doc) {
+    return (
+      <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
+        <div className="card max-w-md w-full text-center animate-slideUp">
+          <div className="card-body py-10">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <FileText size={24} className="text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-brand-900 mb-2">Document Not Found</h2>
+            <p className="text-sm text-brand-500">{error || 'This link may be expired or invalid.'}</p>
+          </div>
         </div>
+      </div>
     );
   }
 
-  // --- Step 1: Authentication ---
-  if (!authenticated) {
+  if (doc.status === DocumentStatus.SIGNED && !success) {
     return (
-      <div className="min-h-screen bg-brand-50 flex flex-col justify-center items-center p-4">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full border border-brand-100">
-          <div className="text-center mb-6">
-            <Lock size={40} className="mx-auto text-yellow-400 mb-2" />
-            <h2 className="text-xl font-bold">Secure Document Access</h2>
-            <p className="text-sm text-brand-500 mt-2">You have been invited to sign <b>{doc.title}</b>.</p>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-               <label className="block text-sm font-medium text-brand-700 mb-2">Verify Identity with Google</label>
-               {/* Fallback custom button that triggers Google Identity prompt. The GIS script may also render its own button into this div. */}
-               <button
-                 type="button"
-                 onClick={handleGoogleClick}
-                 className="w-full bg-yellow-400 text-brand-900 py-2 rounded-md hover:bg-yellow-300 transition font-medium mb-3"
-               >
-                 Continue with Google
-               </button>
-               <div id="google-signin-button" className="flex justify-center" />
+      <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
+        <div className="card max-w-md w-full text-center animate-slideUp">
+          <div className="card-body py-10">
+            <div className="w-16 h-16 rounded-full bg-yellow-50 flex items-center justify-center mx-auto mb-5">
+              <CheckCircle size={32} className="text-yellow-500" />
             </div>
-            {authError && (
-              <div className="text-red-600 text-sm bg-red-50 p-2 rounded border border-red-200">
-                {authError}
-              </div>
+            <h2 className="text-2xl font-bold text-brand-900 mb-2">Already Signed</h2>
+            <p className="text-sm text-brand-500 mb-6">
+              Signed on {new Date(doc.signedAt!).toLocaleString()}
+            </p>
+            {doc.signedPdfUrl && (
+              <a href={buildSignedPdfHref(doc.signedPdfUrl)} download="signed_document.pdf" className="btn btn-primary">
+                <Download size={16} /> Download Copy
+              </a>
             )}
           </div>
         </div>
@@ -275,70 +240,116 @@ export default function ClientSigning() {
     );
   }
 
-  // --- Step 3: Success View ---
-  if (success) {
+  if (!authenticated) {
     return (
-        <div className="min-h-screen bg-brand-50 flex items-center justify-center p-4">
-            <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-full mb-6">
-                    <CheckCircle size={40} className="text-yellow-500" />
+      <div className="min-h-screen bg-brand-50 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md animate-fadeIn">
+          <StepIndicator step={1} />
+          <div className="card">
+            <div className="card-body py-8">
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center mx-auto mb-4">
+                  <Lock size={22} className="text-yellow-500" />
                 </div>
-                <h1 className="text-3xl font-bold text-brand-900 mb-4">Document Signed Successfully!</h1>
-                <p className="text-brand-600 mb-8">Thank you, {email}. A copy has been saved.</p>
+                <h2 className="text-xl font-bold text-brand-900">Verify Your Identity</h2>
+                <p className="text-sm text-brand-500 mt-2 leading-relaxed">
+                  <span className="font-medium text-brand-700">{COMPANY_NAME}</span> invited you to sign
+                </p>
+                <p className="text-sm font-semibold text-brand-900 mt-1">{doc.title}</p>
+              </div>
+              
+              <button type="button" onClick={handleGoogleClick} className="btn btn-primary btn-lg w-full">
+                <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Continue with Google
+              </button>
+              <div id="google-signin-button" className="flex justify-center mt-3" />
+
+              {authError && (
+                <div className="mt-4 text-red-700 text-sm bg-red-50 px-3 py-2.5 rounded-lg border border-red-200 animate-fadeIn">
+                  {authError}
+                </div>
+              )}
             </div>
+          </div>
         </div>
+      </div>
     );
   }
 
-  // --- Step 2: Signing Interface ---
+  if (success) {
+    return (
+      <div className="min-h-screen bg-brand-50 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md text-center animate-slideUp">
+          <StepIndicator step={3} />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-full mb-6">
+            <CheckCircle size={40} className="text-yellow-500" />
+          </div>
+          <h1 className="text-3xl font-bold text-brand-900 mb-3">All Done!</h1>
+          <p className="text-brand-500 mb-2">Document signed successfully.</p>
+          <p className="text-sm text-brand-400">Thank you, {email}</p>
+        </div>
+      </div>
+    );
+  }
+
   const pdfSrc = doc.fileUrl?.startsWith('data:application/pdf') ? doc.fileUrl : `data:application/pdf;base64,${doc.fileUrl || ''}`;
 
   return (
     <div className="min-h-screen bg-brand-50 flex flex-col">
-      <header className="bg-white shadow-sm p-4 flex justify-between items-center z-10 border-b border-brand-100">
-        <h1 className="text-lg font-bold truncate text-brand-900">{doc.title}</h1>
-        <div className="text-sm text-brand-500">Signing as: <span className="font-medium text-brand-900">{email}</span></div>
+      <header className="bg-white border-b border-brand-100 px-4 md:px-6 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center shrink-0">
+            <PenTool size={14} className="text-brand-900" />
+          </div>
+          <h1 className="text-base font-semibold truncate text-brand-900">{doc.title}</h1>
+        </div>
+        <div className="text-xs text-brand-500 shrink-0 ml-3">
+          Signing as <span className="font-medium text-brand-800">{email}</span>
+        </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* PDF Preview */}
-        <div className="flex-1 bg-brand-300 p-4 overflow-auto flex justify-center">
-            {/* Using iframe for simplicity in this demo environment. Ideally use react-pdf */}
-            <iframe 
-                src={`${pdfSrc}#toolbar=0&navpanes=0`} 
-                className="w-full max-w-2xl h-full shadow-lg bg-white" 
-                title="Document PDF"
-            />
+      <div className="px-4 py-4 max-w-5xl mx-auto w-full">
+        <StepIndicator step={2} />
+      </div>
+
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-6xl mx-auto w-full px-4 pb-4 gap-4">
+        <div className="flex-1 bg-brand-200/50 rounded-xl p-3 md:p-4 overflow-auto flex justify-center min-h-[300px] lg:min-h-0">
+          <iframe 
+            src={`${pdfSrc}#toolbar=0&navpanes=0`} 
+            className="w-full max-w-2xl h-full min-h-[400px] shadow-lg bg-white rounded-lg" 
+            title="Document PDF"
+          />
         </div>
 
-        {/* Signing Controls */}
-        <div className="w-full lg:w-96 bg-white border-l border-brand-100 p-6 flex flex-col shadow-xl z-20">
-          <h3 className="text-lg font-semibold mb-6">Sign Document</h3>
+        <div className="w-full lg:w-[22rem] card flex flex-col shrink-0">
+          <div className="card-body flex flex-col flex-1">
+            <h3 className="text-base font-semibold text-brand-900 mb-4">Your Signature</h3>
 
-          <div className="flex gap-2 mb-4">
-            <button 
-              onClick={() => setSigningMethod('draw')}
-              className={`flex-1 py-2 text-sm font-medium rounded border ${signingMethod === 'draw' ? 'bg-brand-50 border-yellow-400 text-brand-800' : 'border-brand-200 text-brand-600'}`}
-            >
-              Draw
-            </button>
-            <button 
-               onClick={() => setSigningMethod('upload')}
-               className={`flex-1 py-2 text-sm font-medium rounded border ${signingMethod === 'upload' ? 'bg-brand-50 border-yellow-400 text-brand-800' : 'border-brand-200 text-brand-600'}`}
-            >
-              Upload
-            </button>
-          </div>
+            <div className="flex gap-1.5 p-1 bg-brand-50 rounded-lg mb-4">
+              {(['draw', 'upload'] as const).map((method) => (
+                <button 
+                  key={method}
+                  onClick={() => setSigningMethod(method)}
+                  className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                    signingMethod === method
+                      ? 'bg-white text-brand-900 shadow-sm'
+                      : 'text-brand-500 hover:text-brand-700'
+                  }`}
+                >
+                  {method === 'draw' ? 'Draw' : 'Upload'}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex-1 flex flex-col justify-center">
-             {signingMethod === 'draw' ? (
-               <div className="mb-4">
-                 <div className="border-2 border-dashed border-brand-200 rounded-lg bg-brand-50 relative touch-none">
+            <div className="flex-1 flex flex-col justify-center">
+              {signingMethod === 'draw' ? (
+                <div className="mb-3">
+                  <div className="border-2 border-dashed border-brand-200 rounded-xl bg-white relative touch-none overflow-hidden">
                     <canvas
                       ref={canvasRef}
                       width={300}
                       height={150}
-                      className="w-full h-[150px] cursor-crosshair rounded-lg"
+                      className="w-full h-[150px] cursor-crosshair"
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
@@ -347,40 +358,42 @@ export default function ClientSigning() {
                       onTouchMove={draw}
                       onTouchEnd={stopDrawing}
                     />
-                    <button onClick={clearCanvas} className="absolute top-2 right-2 p-1 bg-white rounded-full shadow hover:bg-brand-50" title="Clear">
-                       <RefreshCw size={14} />
+                    <button onClick={clearCanvas} className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm hover:bg-brand-50 border border-brand-100" title="Clear">
+                      <RefreshCw size={13} />
                     </button>
-                 </div>
-                 <p className="text-xs text-center mt-2 text-brand-500">Draw your signature above</p>
-               </div>
-             ) : (
-                <div className="mb-4 border-2 border-dashed border-brand-200 rounded-lg h-[150px] flex flex-col items-center justify-center bg-brand-50">
-                   <Upload className="text-brand-400 mb-2" />
-                   <input type="file" accept="image/*" onChange={handleFileUpload} className="text-sm text-brand-500 ml-8" />
+                  </div>
+                  <p className="text-xs text-center mt-2 text-brand-400">Draw your signature above</p>
                 </div>
-             )}
-
-             {signatureData && (
-                <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-yellow-800 text-sm text-center mb-4">
-                   Signature captured successfully
-                </div>
-             )}
-          </div>
-
-          <div className="mt-auto pt-6 border-t border-brand-100">
-             <div className="flex items-center mb-4">
-                <input type="checkbox" id="consent" className="h-4 w-4 text-yellow-400 rounded" defaultChecked />
-                <label htmlFor="consent" className="ml-2 block text-xs text-brand-600">
-                  I agree to be legally bound by this document and signature.
+              ) : (
+                <label className="mb-3 border-2 border-dashed border-brand-200 rounded-xl h-[150px] flex flex-col items-center justify-center bg-white cursor-pointer hover:border-yellow-400 hover:bg-yellow-50/30 transition-colors">
+                  <Upload className="text-brand-400 mb-2" size={24} />
+                  <span className="text-sm text-brand-500">Click to upload image</span>
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                 </label>
-             </div>
-             <button
-               onClick={submitSignature}
-               disabled={!signatureData || submitting}
-               className="w-full bg-yellow-400 text-brand-900 py-3 rounded-lg font-bold shadow-sm hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-             >
-                {submitting ? 'Signing...' : <><PenTool size={18} /> Sign Document</>}
-             </button>
+              )}
+
+              {signatureData && (
+                <div className="bg-green-50 px-3 py-2 rounded-lg border border-green-200 text-green-700 text-xs text-center mb-3 flex items-center justify-center gap-1.5">
+                  <CheckCircle size={14} /> Signature captured
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-brand-100 mt-auto">
+              <label className="flex items-start gap-2.5 mb-4 cursor-pointer">
+                <input type="checkbox" id="consent" className="h-4 w-4 mt-0.5 rounded border-brand-300 text-yellow-400 focus:ring-yellow-400" defaultChecked />
+                <span className="text-xs text-brand-500 leading-relaxed">
+                  I agree to be legally bound by this document and my electronic signature.
+                </span>
+              </label>
+              <button
+                onClick={submitSignature}
+                disabled={!signatureData || submitting}
+                className="btn btn-primary btn-lg w-full"
+              >
+                {submitting ? <><Loader2 size={18} className="animate-spin" /> Signing...</> : <><PenTool size={18} /> Sign Document</>}
+              </button>
+            </div>
           </div>
         </div>
       </div>
